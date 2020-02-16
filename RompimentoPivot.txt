@@ -1,0 +1,73 @@
+EA - Rompimento de pivot
+Resumo: EA detecta um candle Pivot. Se este candle for rompido, o EA entra em favor da reversão de
+movimento indicada pelo candle.
+Parâmetros de entrada (separar compra e venda):
+· ticks_de_entrada (int)
+· fixo_TP (int)
+· fixo_SL (int)
+· QTD_candles_seguidos (int) e período_candle_seguidos (minutos das barras 1min 2min 3min
+4min 5min 6min 10min.. etc)
+· Parâmetros da BB – período, desvio (double), método de preço (int), shift (int) e tempo gráfico
+(minutos das barras 1min 2min 3min 4min 5min 6min 10min.. etc)
+· RSI – nível máximo (double), nível mínimo (double), período (int), método de preço (int), tempo
+gráfico (minutos das barras 1min 2min 3min 4min 5min 6min 10min.. etc)
+· tamanho_do_corpo_% (int)
+· duração_sinal (int)
+· fator_de_ATR_abertura (double)
+· fator_de_ATR_TP (double)
+· fator_de_ATR_SL (double)
+· período do ATR para cálculo do indicador ATR (int)
+· QTD_candles_seguidos (int)
+· Trailing Stop - qtd_barras_para_TS (int) e período_para_TS (minutos das barras 1min 2min
+3min 4min 5min 6min 10min.. etc)
+· tipo_TS (2 opções)
+Funcionamento:
+1 - Detectar um candle Pivot verde ou candle Pivot vermelho de acordo com período_EA:
+O candle Pivot verde é aquele cujo LOW é mais baixo que o LOW do candle anterior e o CLOSE é
+maior que o CLOSE do candle anterior. O candle Pivot verde é necessariamente precedido de um
+candle vermelho qualquer.
+O candle pivot vermelho é aquele cujo HIGH é maior que o HIGH do candle anterior e o CLOSE é
+menor que o CLOSE anterior. O candle pivor vermelho é necessariamente precedido de um candle
+verde qualquer.
+2 - Aplicar os filtros
+Para ocorrer a abertura de posição, o EA deve validar os seguintes filtros (permitir habilitar e
+desabilitar cada um deles individualmente):
+Filtro 1: no caso de detectar um candle Pivot vermelho, abrir posição apenas se X candles anteriores
+forem verdes. No caso de detectar um candle Pivot verde, abrir posição apenas se X candles
+anteriores forem vermelhos. (X = QTD_candles_seguidos analisados no período_candle_seguidos)
+Filtro 2: no caso de detectar um candle Pivot vermelho, o último candle verde deve estar fora da
+banda superior da Bada_de_Bolinger com os parâmetros inclusos pelo usuário. No caso de detectar
+um candle Pivot verde, o último candle vermelho deve estar fora da banda inferior da
+Bada_de_Bolinger.
+
+Filtro 3: o fechamento do último candle anterior ao pivot deve respeitar uma faixa de RSI (estar
+entre o nível máximo e nível mínimo).
+Filtro 4: O corpo do Pivot (modulo(CLOSE-OPEN)) deve ser tamanho_do_corpo_%por cento do
+tamanho do pivot inteiro (modulo(HIGH-LOW))
+3 - Abrir a ordem com TP e SL
+Se detectar um candle Pivot verde, agredir o mercado com ordem de compra da seguinte forma
+caso haja rompimento deste valor nos próximos duração_sinal segundos após a formação do Pivot:
+posição da ordem: HIGH do candle Pivot verde + fator_de_ATR_abertura*indicador_ATR+
+ticks_de_entrada*valor_atual_do_ativo/100000
+TP: HIGH do candle Pivot verde + fator_de_ATR_TP*indicador_ATR) +
+fixo_TP*valor_atual_do_ativo/100000
+SL: LOW do candle Pivot verde - fator_de_ATR_TP*indicador_ATR) -
+fixo_SL*valor_atual_do_ativo/100000
+Se detectar um candle Pivot vermelho, agredir o mercado com ordem de venda da seguinte forma
+caso haja rompimento deste valor nos próximos duração_sinal segundos após a formação do Pivot:
+posição da ordem: LOW do candle Pivot vermelho - fator_de_ATR_abertura*indicador_ATR) -
+ticks_de_entrada*valor_atual_do_ativo/100000
+TP: HIGH do candle Pivot vermelho - fator_de_ATR_TP*indicador_ATR) -
+fixo_TP*valor_atual_do_ativo/100000
+SL: HIGH do candle Pivot vermelho + fator_de_ATR_TP*indicador_ATR) +
+fixo_SL*valor_atual_do_ativo/100000
+4 - Fazer gestão de risco:
+Possibilitar duas opções de trailing stop definidos por tipo_TS (permitir habilitar/desabilitar a gestão)
+1- Trailing STOP barra a barra com quantidade de barras e período das barras definidos pelo
+usuário (qtd_barras_para_TS e período_para_TS)
+2- Trailing STOP fixo por pontos.
+Observações:
+O EA deve operar em loop por fechamento de candle (para ser testado em OHLC).
+Deve executar apenas uma operação por vez
+Dividir todo os parâmetros de entrada para o caso de compra (Pivot verde) e para os casos de
+venda (Pivot vermelho)

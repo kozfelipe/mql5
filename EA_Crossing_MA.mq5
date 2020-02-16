@@ -22,7 +22,7 @@ int OnInit()
   {
 //---
    Print("Início...");
-   
+
    ArraySetAsSeries(ma_long_buffer, true);
    ArraySetAsSeries(ma_short_buffer, true);
 
@@ -130,7 +130,7 @@ void OnTick()
 
    if(ma_short_buffer[1] < ma_long_buffer[1] && ma_short_buffer[2] > ma_long_buffer[2])
       signal_sell = true;
-      
+
    if(PositionSelect(_Symbol)) // closed position
      {
       if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
@@ -176,4 +176,5 @@ void sell(double volume, double price, double _sl, double _tp, string comment)
    Print("Venda");
    trade.Sell(volume, _Symbol, price, _sl, _tp, comment);
   }
+//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+

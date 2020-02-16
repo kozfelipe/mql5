@@ -181,4 +181,3 @@ void sell(double volume, double price, double _sl, double _tp, string comment)
    trade.Sell(volume, _Symbol, price, _sl, _tp, comment);
   }
 //+------------------------------------------------------------------+
-//+------------------------------------------------------------------+

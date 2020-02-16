@@ -13,7 +13,7 @@ CTrade         trade;
 double         ma_long_buffer[], ma_short_buffer[];
 int            ma_long_handler, ma_short_handler;
 input int      ma_long_period = 50, ma_short_period = 10;
-input double   lot = 0.1;
+input double   lot = 100;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -22,6 +22,9 @@ int OnInit()
   {
 //---
    Print("Início...");
+   
+   ArraySetAsSeries(ma_long_buffer, true);
+   ArraySetAsSeries(ma_short_buffer, true);
 
    ma_long_handler = iMA(
                         _Symbol,            // symbol name
@@ -50,9 +53,6 @@ int OnInit()
    if(!ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), ma_long_handler) ||
       !ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), ma_short_handler))
       Alert("Falha ao carregar gráfico do indicador: erro ", GetLastError());
-
-   ArraySetAsSeries(ma_long_buffer, true);
-   ArraySetAsSeries(ma_short_buffer, true);
 
 //---
    return(INIT_SUCCEEDED);
@@ -110,7 +110,7 @@ void OnTick()
   {
 //---
    MqlTick  tick;
-   bool     buy_closed = false, sell_closed = false;
+   bool     position_buy = false, position_sell = false, signal_buy = false, signal_sell = false;
 
    if(!SymbolInfoTick(_Symbol, tick))
      {
@@ -125,37 +125,33 @@ void OnTick()
       return;
      }
 
-   for(int i=0; i<PositionsTotal(); i++)
-      if(PositionGetSymbol(i) == _Symbol) // closed position
-        {
-         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
-            buy_closed = true;
-         else
-            if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-               sell_closed = true;
-        }
+   if(ma_short_buffer[1] > ma_long_buffer[1] && ma_short_buffer[2] < ma_long_buffer[2])
+      signal_buy = true;
 
-   if(ma_long_buffer[1] < ma_short_buffer[1] && ma_long_buffer[2] > ma_short_buffer[2])
+   if(ma_short_buffer[1] < ma_long_buffer[1] && ma_short_buffer[2] > ma_long_buffer[2])
+      signal_sell = true;
+      
+   if(PositionSelect(_Symbol)) // closed position
      {
-      if(sell_closed)
-        {
-         buy(lot*2, 0, 0, 0, "virada de mão");
-         return;
-        }
-      if(buy_closed)
-         return;
-      buy(lot, 0, 0, 0, "compra a mercado");
+      if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
+         position_buy = true;
+      if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+         position_sell = true;
      }
-   if(ma_long_buffer[1] > ma_short_buffer[1] && ma_long_buffer[2] < ma_short_buffer[2])
+
+   if(!position_buy && !position_sell)
      {
-      if(buy_closed)
-        {
+      if(signal_buy)
+         buy(lot, 0, 0, 0, "compra a mercado");
+      if(signal_sell)
+         sell(lot, 0, 0, 0, "venda a mercado");
+     }
+   else
+     {
+      if(position_buy && signal_sell)
          sell(lot*2, 0, 0, 0, "virada de mão");
-         return;
-        }
-      if(sell_closed)
-         return;
-      sell(lot, 0, 0, 0, "venda a mercado");
+      if(position_sell && signal_buy)
+         buy(lot*2, 0, 0, 0, "virada de mão");
      }
 
    Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last);

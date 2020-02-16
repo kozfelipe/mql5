@@ -22,6 +22,9 @@ int OnInit()
   {
 //---
    Print("Início...");
+   
+   ArraySetAsSeries(ma_buffer, true);
+   ArraySetAsSeries(close_buffer,true); 
 
    ma_handler = iMA(
                    _Symbol,            // symbol name
@@ -29,7 +32,7 @@ int OnInit()
                    ma_period,          // averaging period
                    0,                  // horizontal shift
                    MODE_SMA,           // smoothing type
-                   PRICE_CLOSE         // type of price or handle
+                   ma_buffer           // type of price or handle
                 );
                 
    if(ma_handler==INVALID_HANDLE)
@@ -41,10 +44,6 @@ int OnInit()
    if(!ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), ma_handler))
       Alert("Falha ao carregar gráfico do indicador: erro ", GetLastError());
       
-   ArraySetAsSeries(ma_buffer, true);
-   
-   ArraySetAsSeries(close_buffer,true); 
-
    sl = stoploss;
    tp = takeprofit;
    

@@ -23,17 +23,17 @@ int OnInit()
 //---
    Print("Início...");
    
-   ArraySetAsSeries(ma_buffer, true);
-   ArraySetAsSeries(close_buffer,true); 
-
    ma_handler = iMA(
                    _Symbol,            // symbol name
                    _Period,            // period
                    ma_period,          // averaging period
                    0,                  // horizontal shift
                    MODE_SMA,           // smoothing type
-                   ma_buffer           // type of price or handle
+                   PRICE_CLOSE         // type of price or handle
                 );
+                
+   ArraySetAsSeries(ma_buffer, true);
+   ArraySetAsSeries(close_buffer,true); 
                 
    if(ma_handler==INVALID_HANDLE)
      {

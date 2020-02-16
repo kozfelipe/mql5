@@ -39,7 +39,7 @@ int OnInit()
      }
      
    if(!ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), ma_handler))
-      Alert("Falha ao carregar gráfico do indicador: erro ",GetLastError());
+      Alert("Falha ao carregar gráfico do indicador: erro ", GetLastError());
       
    ArraySetAsSeries(ma_buffer, true);
    

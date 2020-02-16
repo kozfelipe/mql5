@@ -9,11 +9,13 @@
 
 #include <Trade\Trade.mqh>
 
-CTrade         trade;
-double         ma_buffer[], close_buffer[], sl, tp;
-int            ma_handler, factor = 10;
-input int      ma_period = 21;
-input double   stoploss = 30, takeprofit = 100, lot = 0.1;
+CTrade                     trade;
+double                     ma_buffer[];
+int                        ma_handler;
+input int                  ma_period = 21;
+input ENUM_MA_METHOD       ma_method = MODE_SMA;
+input ENUM_APPLIED_PRICE   ma_price = PRICE_CLOSE;
+input double               lot = 5;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -22,36 +24,26 @@ int OnInit()
   {
 //---
    Print("Início...");
-   
+
    ma_handler = iMA(
                    _Symbol,            // symbol name
                    _Period,            // period
                    ma_period,          // averaging period
                    0,                  // horizontal shift
-                   MODE_SMA,           // smoothing type
-                   PRICE_CLOSE         // type of price or handle
+                   ma_method,          // smoothing type
+                   ma_price            // type of price or handle
                 );
-                
+
    ArraySetAsSeries(ma_buffer, true);
-   ArraySetAsSeries(close_buffer,true); 
-                
+
    if(ma_handler==INVALID_HANDLE)
      {
       Print("Falha ao carregar manipulador do indicador. (confira o input de período)");
       return(INIT_FAILED);
      }
-     
+
    if(!ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), ma_handler))
       Alert("Falha ao carregar gráfico do indicador: erro ", GetLastError());
-      
-   sl = stoploss;
-   tp = takeprofit;
-   
-   if(_Digits == 5 || _Digits == 3)
-     {
-      sl = sl * factor;
-      tp = tp * factor;
-     }
 
 //---
    return(INIT_SUCCEEDED);
@@ -64,7 +56,6 @@ void OnDeinit(const int reason)
 //---
    IndicatorRelease(ma_handler);
    ArrayFree(ma_buffer);
-   ArrayFree(close_buffer);  
 
    switch(reason)
      {
@@ -107,7 +98,7 @@ void OnTick()
   {
 //---
    MqlTick  tick;
-   bool     buy_open = false, sell_open = false;
+   bool     buy_close = false, sell_close = false, close = false;
 
    if(!SymbolInfoTick(_Symbol, tick))
      {
@@ -115,46 +106,42 @@ void OnTick()
       return;
      }
 
-   if(!CopyBuffer(ma_handler, 0, 0, 3, ma_buffer) || !CopyClose(_Symbol, _Period, 1, 2, close_buffer))
+   if(!CopyBuffer(ma_handler, 0, 0, 3, ma_buffer))
      {
-      Print("Falha no preenchimento do buffer");
+      Alert("Falha no preenchimento do buffer");
       return;
      }
 
-   for(int i=0;i<PositionsTotal();i++)
-      if(PositionGetSymbol(i) == _Symbol) // open position
+   for(int i=0; i<PositionsTotal(); i++)
+      if(PositionGetSymbol(i) == _Symbol) // close position
         {
+         close = true;
          if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
-            buy_open = true;
-         else
-            if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-               sell_open = true;
+            buy_close = true;
+         if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+            sell_close = true;
         }
 
-   if(ma_buffer[1] > close_buffer[1] && ma_buffer[0] < close_buffer[0])
+   if(tick.last > ma_buffer[0] && !close)
      {
-      if(sell_open)
-         trade.PositionClose(_Symbol);
-      if(buy_open)
-         return;
-      buy(
+      simple_trade(
+         buy,
          lot,
-         NormalizeDouble(tick.bid, _Digits),
-         NormalizeDouble(tick.bid - sl * _Point, _Digits),
-         NormalizeDouble(tick.bid + tp * _Point, _Digits)
+         tick.ask,
+         tick.ask - 5,
+         tick.ask + 5,
+         "compra"
       );
      }
-    if(ma_buffer[1] < close_buffer[1] && ma_buffer[0] > close_buffer[0])
+   if(tick.last < ma_buffer[0] && !close)
      {
-      if(buy_open)
-         trade.PositionClose(_Symbol);
-      if(sell_open)
-         return;
-      sell(
+      simple_trade(
+         sell,
          lot,
-         NormalizeDouble(tick.bid, _Digits),
-         NormalizeDouble(tick.bid + sl * _Point, _Digits),
-         NormalizeDouble(tick.bid - tp * _Point, _Digits)
+         tick.bid,
+         tick.bid + 5,
+         tick.bid - 5,
+         "venda"
       );
      }
 
@@ -164,20 +151,22 @@ void OnTick()
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//| Buy Order                                                        |
+//| Simple Trade                                                     |
 //+------------------------------------------------------------------+
-void buy(double volume, double price, double _sl, double _tp)
+enum trade_mode {buy, sell};
+void simple_trade(trade_mode mode, double volume, double price, double _sl, double _tp, string comment)
   {
-   Print("Compra");
-   trade.Buy(volume, _Symbol, price, _sl, _tp, "compra");
-  }
+   switch(mode)
+     {
+      case buy:
+         if(trade.Buy(volume, _Symbol, price, _sl, _tp, comment))
+            Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+         break;
+      case sell:
+         if(trade.Sell(volume, _Symbol, price, _sl, _tp, comment))
+            Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+         break;
+     }
 
-//+------------------------------------------------------------------+
-//| Sell Order                                                       |
-//+------------------------------------------------------------------+
-void sell(double volume, double price, double _sl, double _tp)
-  {
-   Print("Venda");
-   trade.Sell(volume, _Symbol, price, _sl, _tp, "venda");
   }
 //+------------------------------------------------------------------+

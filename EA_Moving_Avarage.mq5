@@ -7,9 +7,6 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include <Trade\Trade.mqh>
-
-CTrade                     trade;
 double                     ma_buffer[];
 int                        ma_handler;
 input int                  ma_period = 21;
@@ -150,12 +147,14 @@ void OnTick()
   }
 //+------------------------------------------------------------------+
 
+#include <Trade\Trade.mqh>
 enum trade_mode {buy, sell};
 //+------------------------------------------------------------------+
 //| Simple Trade                                                     |
 //+------------------------------------------------------------------+
 void simple_trade(trade_mode mode, double volume, double price, double _sl, double _tp, string comment)
   {
+   CTrade trade;
    switch(mode)
      {
       case buy:
@@ -170,6 +169,5 @@ void simple_trade(trade_mode mode, double volume, double price, double _sl, doub
          Print("Modo Desconhecido");
          break;
      }
-
   }
 //+------------------------------------------------------------------+

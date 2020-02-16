@@ -150,10 +150,10 @@ void OnTick()
   }
 //+------------------------------------------------------------------+
 
+enum trade_mode {buy, sell};
 //+------------------------------------------------------------------+
 //| Simple Trade                                                     |
 //+------------------------------------------------------------------+
-enum trade_mode {buy, sell};
 void simple_trade(trade_mode mode, double volume, double price, double _sl, double _tp, string comment)
   {
    switch(mode)
@@ -165,6 +165,9 @@ void simple_trade(trade_mode mode, double volume, double price, double _sl, doub
       case sell:
          if(trade.Sell(volume, _Symbol, price, _sl, _tp, comment))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+         break;
+      default:
+         Print("Modo Desconhecido");
          break;
      }
 

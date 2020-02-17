@@ -90,6 +90,9 @@ void OnTick()
   {
 //---
 
+   if(!new_candle(_Period)) // tick a cada novo candle
+      return;
+
    bool signal_buy = false, signal_sell = false, position_open = false;
 
    if(!SymbolInfoTick(_Symbol, tick)) // atualiza tick
@@ -164,5 +167,16 @@ void OnTick()
      }
 
 
+  }
+
+//+------------------------------------------------------------------+
+//| Return whether is new candle                                     |
+//+------------------------------------------------------------------+
+bool new_candle(const datetime barTime)
+  {
+   static datetime barTimeLast = 0;
+   bool            result      = barTime != barTimeLast;
+   barTimeLast = barTime;
+   return result;
   }
 //+------------------------------------------------------------------+

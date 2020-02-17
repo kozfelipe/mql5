@@ -11,10 +11,11 @@
 
 input int                     rsi_period = 14, atr_period = 14, bb_period = 21, bb_shift = 0, ticks_de_entrada, fixo_tp, fixo_sl, qtd_candles_seguidos, corpo_percent, duracao_sinal;
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE, bb_price = PRICE_CLOSE;
-input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_tp, atr_fator_sl;
+input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_opening, atr_fator_tp, atr_fator_sl;
+input ulong                   magic = 123;
 
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
-int                           rsi_handler, atr_handler, bb_handler;
+int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
 
 MqlTick                       tick;
 MqlRates                      rates[];
@@ -90,7 +91,7 @@ void OnTick()
   {
 //---
 
-   if(!new_candle(_Period)) // tick a cada novo candle
+   if(!is_new_candle(_Period) && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
    bool signal_buy = false, signal_sell = false, position_open = false;
@@ -133,12 +134,12 @@ void OnTick()
            }
          if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].close > bb_lower_buffer[1+i]) // ultimo candle vermelho dentro da banda inferior
            {
-            signal_sell = false;
+            signal_buy = false;
             break;
            }
         }
       if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
-         signal_sell = false;
+         signal_buy = false;
      }
 
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
@@ -166,13 +167,49 @@ void OnTick()
         }
      }
 
+   if((signal_buy || signal_sell) && signal_timer == 0) // inicia duração do sinal
+      signal_timer = TimeCurrent();
+
+   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração
+     {
+
+      double _price, _sl, _tp;
+      bool   buy_open = false, sell_open = false;
+
+      for(int i=0; i<PositionsTotal(); i++) // status da posição
+         if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic)
+           {
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
+               buy_open = true;
+            if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+               sell_open = true;
+            break;
+           }
+
+      if(signal_buy && !buy_open)
+        {
+         _price = NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits);
+         _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
+         _sl =    NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
+         if(trade.Buy(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
+            Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+        }
+      if(signal_sell && !sell_open)
+        {
+         _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
+         _tp =    NormalizeDouble(rates[0].high - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
+         _sl =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
+         if(trade.Sell(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
+            Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+        }
+     }
 
   }
 
 //+------------------------------------------------------------------+
 //| Return whether is new candle                                     |
 //+------------------------------------------------------------------+
-bool new_candle(const datetime barTime)
+bool is_new_candle(const datetime barTime)
   {
    static datetime barTimeLast = 0;
    bool            result      = barTime != barTimeLast;

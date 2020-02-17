@@ -55,7 +55,7 @@ int OnInit()
 
    if(rsi_handler == INVALID_HANDLE || atr_handler == INVALID_HANDLE || bb_handler == INVALID_HANDLE)
      {
-      Print("Falha ao carregar manipulador do indicador. (confira os inputs)");
+      Alert("Falha ao carregar manipulador do indicador. (confira os inputs)");
       return(INIT_FAILED);
      }
 

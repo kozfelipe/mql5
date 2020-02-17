@@ -21,7 +21,7 @@ input int                     rsi_period = 14, atr_period = 14, bb_period = 21, 
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE, bb_price = PRICE_CLOSE;
 input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_opening, atr_fator_tp, atr_fator_sl;
 input ENUM_TS                 trailing_stop = NONE;
-input ulong                   magic = 1;
+input ulong                   magic_number = 1;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -69,7 +69,7 @@ int OnInit()
    ArraySetAsSeries(bb_lower_buffer, true);
    ArraySetAsSeries(rates, true);
 
-   trade.SetExpertMagicNumber(magic);
+   trade.SetExpertMagicNumber(magic_number);
 
 //---
    return(INIT_SUCCEEDED);
@@ -98,7 +98,7 @@ void OnTick()
    if(!is_new_candle(_Period) && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
-   bool signal_buy = false, signal_sell = false, position_open = false;
+   bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false;
 
    if(!SymbolInfoTick(_Symbol, tick)) // atualiza tick
      {
@@ -171,26 +171,25 @@ void OnTick()
         }
      }
 
-   if((signal_buy || signal_sell) && signal_timer == 0) // inicia duração do sinal
+   for(int i=0; i<PositionsTotal(); i++) // status da posição
+      if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic_number)
+        {
+         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
+            buy_open = true;
+         if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+            sell_open = true;
+         break;
+        }
+
+   if((signal_buy || signal_sell) && !buy_open && !sell_open && signal_timer == 0) // inicia duração do sinal
       signal_timer = TimeCurrent();
 
-   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração
+   if((signal_buy || signal_sell) && !buy_open && !sell_open && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração sem posição aberta
      {
 
       double _price, _sl, _tp;
-      bool   buy_open = false, sell_open = false;
 
-      for(int i=0; i<PositionsTotal(); i++) // status da posição
-         if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic)
-           {
-            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
-               buy_open = true;
-            if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-               sell_open = true;
-            break;
-           }
-
-      if(signal_buy && !buy_open)
+      if(signal_buy)
         {
          _price = NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
@@ -198,7 +197,7 @@ void OnTick()
          if(trade.Buy(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
             Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
-      if(signal_sell && !sell_open)
+      if(signal_sell)
         {
          _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
@@ -206,6 +205,9 @@ void OnTick()
          if(trade.Sell(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
+
+      signal_timer = 0;
+
      }
 
   }

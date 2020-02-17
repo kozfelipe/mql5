@@ -9,17 +9,19 @@
 
 #include <Trade\Trade.mqh>
 
-input int                     rsi_period = 14, atr_period = 14, bb_period = 21, bb_shift = 0, ticks_de_entrada, fixo_tp, fixo_sl, qtd_candles_seguidos, corpo_percent, duracao_sinal;
-input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE, bb_price = PRICE_CLOSE;
-input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_opening, atr_fator_tp, atr_fator_sl;
-input ulong                   magic = 123;
-
-double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
-int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
-
 MqlTick                       tick;
 MqlRates                      rates[];
 CTrade                        trade;
+
+double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
+int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
+enum                          ENUM_TS {USER_DEFINED, FIXED, NONE};
+
+input int                     rsi_period = 14, atr_period = 14, bb_period = 21, ts_period = 0, bb_shift = 0, ts_bars = 0, ticks_de_entrada, fixo_tp, fixo_sl, qtd_candles_seguidos, corpo_percent, duracao_sinal;
+input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE, bb_price = PRICE_CLOSE;
+input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_opening, atr_fator_tp, atr_fator_sl;
+input ulong                   magic = 1;
+input ENUM_TS                 trailing_stop = NONE;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -66,7 +68,7 @@ int OnInit()
    ArraySetAsSeries(bb_upper_buffer, true);
    ArraySetAsSeries(bb_lower_buffer, true);
    ArraySetAsSeries(rates, true);
-   
+
    trade.SetExpertMagicNumber(magic);
 
 //---

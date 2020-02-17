@@ -98,7 +98,7 @@ void OnTick()
    if(!is_new_candle(_Period) && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
-   bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false;
+   bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false, order_pending = false;
 
    if(!SymbolInfoTick(_Symbol, tick)) // atualiza tick
      {
@@ -181,10 +181,23 @@ void OnTick()
          break;
         }
 
-   if((signal_buy || signal_sell) && !buy_open && !sell_open && signal_timer == 0) // inicia duração do sinal
-      signal_timer = TimeCurrent();
+   for(int i=0; i<OrdersTotal(); i++) // ordem pendente
+      if(OrderGetString(ORDER_SYMBOL) == _Symbol && OrderGetInteger(ORDER_MAGIC) == magic_number)
+        {
+         order_pending = true;
+         break;
+        }
 
-   if((signal_buy || signal_sell) && !buy_open && !sell_open && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração sem posição aberta
+   if(buy_open || sell_open || order_pending) // posição aberta
+      return;
+
+   if((signal_buy || signal_sell) && signal_timer == 0) // inicia duração do sinal
+     {
+      signal_timer = TimeCurrent();
+      return;
+     }
+
+   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração sem posição aberta
      {
 
       double _price, _sl, _tp;
@@ -209,6 +222,8 @@ void OnTick()
       signal_timer = 0;
 
      }
+
+   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last);
 
   }
 

@@ -66,6 +66,8 @@ int OnInit()
    ArraySetAsSeries(bb_upper_buffer, true);
    ArraySetAsSeries(bb_lower_buffer, true);
    ArraySetAsSeries(rates, true);
+   
+   trade.SetExpertMagicNumber(magic);
 
 //---
    return(INIT_SUCCEEDED);

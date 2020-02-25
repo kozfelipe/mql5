@@ -2,6 +2,6 @@
 
 Just my mql5 collections
 
-Panel
+## Panel
 
-https://www.mql5.com/en/code/1771
+[panel](https://www.mql5.com/en/code/1771)

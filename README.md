@@ -2,6 +2,6 @@
 
 Just my mql5 collections
 
-## Panel
+## Panels
 
-[panel](https://www.mql5.com/en/code/1771)
+[hedge panel](https://www.mql5.com/en/code/1771)

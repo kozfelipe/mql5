@@ -204,6 +204,8 @@ void OnTick()
         }
       if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
          signal_buy = false;
+      if(signal_buy)
+         Print("Sinal de Compra");
      }
 
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
@@ -228,6 +230,8 @@ void OnTick()
            }
          if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
             signal_sell = false;
+         if(signal_sell)
+            Print("Sinal de Venda");
         }
      }
 

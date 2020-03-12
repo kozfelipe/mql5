@@ -16,6 +16,7 @@ CTrade                        trade;
 
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
 int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
+datetime                      new_bar;
 
 input string                  secao0 = "############################"; //### Definições Básicas ###
 input ulong                   magic_number = 1; // magic number
@@ -53,8 +54,8 @@ input double                  bb_deviation = 2; // Bolinger - desvios padrão
 input string                  secao3 = "############################"; //### Trailing Stop ###
 enum                          ENUM_TS {USER_DEFINED, FIXED, NONE};
 input ENUM_TS                 ts_mode = NONE; // TS - modo
-input int                     ts_steps = 2; // TS - barras
-input int                     ts_period = 6; // TS - período
+input double                  ts_steps = 2; // TS - barras
+input double                  ts_period = 6; // TS - período
 
 input string                  secao4 = "############################"; //### Estratégia ###
 input int                     ticks_de_entrada; // ticks de entrada
@@ -150,9 +151,8 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
   {
-//---
 
-   if(!is_new_candle(_Period) && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
+   if(!is_new_candle() && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
    bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false, order_pending = false;
@@ -204,6 +204,8 @@ void OnTick()
         }
       if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
          signal_buy = false;
+      if(signal_buy)
+         Print("Sinal de Compra");
      }
 
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
@@ -228,6 +230,8 @@ void OnTick()
            }
          if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
             signal_sell = false;
+         if(signal_sell)
+            Print("Sinal de Venda");
         }
      }
 
@@ -294,12 +298,14 @@ void OnTick()
 //+------------------------------------------------------------------+
 //| Return whether is new candle                                     |
 //+------------------------------------------------------------------+
-bool is_new_candle(const datetime barTime)
+bool is_new_candle()
   {
-   static datetime barTimeLast = 0;
-   bool            result      = barTime != barTimeLast;
-   barTimeLast = barTime;
-   return result;
+   if(new_bar != iTime(_Symbol,_Period, 0))
+     {
+      new_bar = iTime(_Symbol, _Period, 0);
+      return true;
+     }
+   return false;
   }
 
 //+------------------------------------------------------------------+

@@ -35,21 +35,21 @@ input string                  datetime_stop = "17:20"; // encerramento de abertu
 input string                  datetime_close = "17:40"; // fechamento de posições
 
 input string                  secao3 = "############################"; //### Indicador RSI ###
-input ENUM_MODE               rsi_mode = DISABLED; // RSI - ativar
+input ENUM_MODE               rsi_mode = ENABLED; // RSI - ativar
 input int                     rsi_period = 14; // RSI - período
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE; // RSI - tipo de preço
 input double                  rsi_level_min = 30; // RSI - banda mínima
 input double                  rsi_level_max = 70; // RSI - banda máxima
 
 input string                  secao4 = "############################"; //### Indicador ATR ###
-input ENUM_MODE               atr_mode = DISABLED; // ATR - ativar
+input ENUM_MODE               atr_mode = ENABLED; // ATR - ativar
 input int                     atr_period = 14; // ATR - período
 input double                  atr_fator_opening; // ATR - fator de abertura
 input double                  atr_fator_tp; // ATR - fator TP
 input double                  atr_fator_sl; // ATR - fator SL
 
 input string                  secao5 = "############################"; //### Indicador Bandas de Bolinger ###
-input ENUM_MODE               bb_mode = DISABLED; // Bolinger - ativar
+input ENUM_MODE               bb_mode = ENABLED; // Bolinger - ativar
 input int                     bb_period = 21; // Bolinger - período
 input ENUM_APPLIED_PRICE      bb_price = PRICE_CLOSE; // Bolinger - tipo de preço
 input int                     bb_shift = 0; // Bolinger - deslocamento
@@ -299,7 +299,7 @@ void OnTick()
         {
          _price = NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
-         _sl =    NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
+         _sl =    NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
          if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
             Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
@@ -307,7 +307,7 @@ void OnTick()
         {
          _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
-         _sl =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
+         _sl =    NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
          if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }

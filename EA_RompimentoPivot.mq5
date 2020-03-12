@@ -15,8 +15,10 @@ MqlDateTime                   date;
 CTrade                        trade;
 
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
-int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
+int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0, datetime_start_hour, datetime_start_min, datetime_stop_hour, datetime_stop_min, datetime_close_hour, datetime_close_min;
+string                        stringtime_start[], stringtime_stop[], stringtime_close[];
 datetime                      new_bar;
+enum                          ENUM_MODE {ENABLED, DISABLED};
 
 input string                  secao0 = "############################"; //### Definições Básicas ###
 input ulong                   magic_number = 1; // magic number
@@ -26,14 +28,10 @@ input int                     fixo_tp = 20; // TP fixo
 input int                     fixo_sl = 5; // SL fixo
 
 input string                  secao1 = "############################"; //### Horário de Operação ###
-enum                          ENUM_DATE {ENABLED, DISABLED};
-input ENUM_DATE               datetime_mode = DISABLED; // ativar horário personalizado
-input int                     datetime_start_hour = 10; // hora de inicio de abertura de posições
-input int                     datetime_start_min = 30; // minuto de inicio de abertura de posições
-input int                     datetime_stop_hour = 16; // hora de encerramento de abertura de posições
-input int                     datetime_stop_min = 45; // minuto de encerramento de abertura de posições
-input int                     datetime_close_hour = 17; // hora de inicio de fechamento de posições
-input int                     datetime_close_min = 20; // minuto de inicio de fechamento de posições
+input ENUM_MODE               datetime_mode = DISABLED; // ativar horário personalizado
+input string                  datetime_start = "09:20"; // inicio de abertura de posições
+input string                  datetime_stop = "17:20"; // encerramento de abertura de posições
+input string                  datetime_close = "17:40"; // fechamento de posições
 
 input string                  secao2 = "############################"; //### Indicadores ###
 input int                     rsi_period = 14; // RSI - período
@@ -112,6 +110,16 @@ int OnInit()
    trade.SetExpertMagicNumber(magic_number);
    trade.SetDeviationInPoints(deviation);
    trade.SetTypeFilling(filling);
+   
+   StringSplit(datetime_start, ':', stringtime_start);
+   StringSplit(datetime_stop, ':', stringtime_stop);
+   StringSplit(datetime_close, ':', stringtime_close);
+   datetime_start_hour = StringToInteger(stringtime_start[0]);
+   datetime_start_min = StringToInteger(stringtime_start[1]);
+   datetime_stop_hour = StringToInteger(stringtime_stop[0]);
+   datetime_stop_min = StringToInteger(stringtime_stop[1]);
+   datetime_close_hour = StringToInteger(stringtime_close[0]);
+   datetime_close_min = StringToInteger(stringtime_close[1]);
 
    if(datetime_start_hour > datetime_stop_hour || datetime_stop_hour > datetime_close_hour)
      {

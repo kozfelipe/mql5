@@ -11,17 +11,56 @@
 
 MqlTick                       tick;
 MqlRates                      rates[];
+MqlDateTime                   date;
 CTrade                        trade;
 
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
 int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0;
-enum                          ENUM_TS {USER_DEFINED, FIXED, NONE};
 
-input int                     rsi_period = 14, atr_period = 14, bb_period = 21, ts_period = 0, bb_shift = 0, ts_bars = 0, ticks_de_entrada, fixo_tp, fixo_sl, qtd_candles_seguidos, corpo_percent, duracao_sinal;
-input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE, bb_price = PRICE_CLOSE;
-input double                  rsi_level_min = 30, rsi_level_max = 70, bb_deviation = 2, atr_fator_opening, atr_fator_tp, atr_fator_sl;
-input ENUM_TS                 trailing_stop = NONE;
-input ulong                   magic_number = 1;
+input string                  secao0 = "############################"; //### Definições Básicas ###
+input ulong                   magic_number = 1; // magic number
+input ulong                   deviation = 50; // desvio
+input ENUM_ORDER_TYPE_FILLING filling = ORDER_FILLING_RETURN; // preenchimento
+input int                     fixo_tp = 20; // TP fixo
+input int                     fixo_sl = 5; // SL fixo
+
+input string                  secao1 = "############################"; //### Horário de Operação ###
+enum                          ENUM_DATE {ENABLED, DISABLED};
+input ENUM_DATE               datetime_mode; // ativar horário personalizado
+input int                     datetime_start_hour = 10; // hora de inicio de abertura de posições
+input int                     datetime_start_min = 30; // minuto de inicio de abertura de posições
+input int                     datetime_stop_hour = 16; // hora de encerramento de abertura de posições
+input int                     datetime_stop_min = 45; // minuto de encerramento de abertura de posições
+input int                     datetime_close_hour = 17; // hora de inicio de fechamento de posições
+input int                     datetime_close_min = 20; // minuto de inicio de fechamento de posições
+
+input string                  secao2 = "############################"; //### Indicadores ###
+input int                     rsi_period = 14; // RSI - período
+input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE; // RSI - tipo de preço
+input double                  rsi_level_min = 30; // RSI - banda mínima
+input double                  rsi_level_max = 70; // RSI - banda máxima
+
+input int                     atr_period = 14; // ATR - período
+input double                  atr_fator_opening; // ATR - fator de abertura
+input double                  atr_fator_tp; // ATR - fator TP
+input double                  atr_fator_sl; // ATR - fator SL
+
+input int                     bb_period = 21; // Bolinger - período
+input ENUM_APPLIED_PRICE      bb_price = PRICE_CLOSE; // Bolinger - tipo de preço
+input int                     bb_shift = 0; // Bolinger - deslocamento
+input double                  bb_deviation = 2; // Bolinger - desvios padrão
+
+input string                  secao3 = "############################"; //### Trailing Stop ###
+enum                          ENUM_TS {USER_DEFINED, FIXED, NONE};
+input ENUM_TS                 ts_mode = NONE; // TS - modo
+input int                     ts_steps = 2; // TS - barras
+input int                     ts_period = 6; // TS - período
+
+input string                  secao4 = "############################"; //### Estratégia ###
+input int                     ticks_de_entrada; // ticks de entrada
+input int                     qtd_candles_seguidos; // candles seguidos
+input int                     corpo_percent; // percentual tamanho do candle
+input int                     duracao_sinal; // segundos de duração do sinal
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -70,6 +109,24 @@ int OnInit()
    ArraySetAsSeries(rates, true);
 
    trade.SetExpertMagicNumber(magic_number);
+   trade.SetDeviationInPoints(deviation);
+   trade.SetTypeFilling(filling);
+
+   if(datetime_start_hour > datetime_stop_hour || datetime_stop_hour > datetime_close_hour)
+     {
+      Alert("Inconsistência de Horários de Negociação!");
+      return(INIT_FAILED);
+     }
+   if(datetime_start_hour == datetime_stop_hour && datetime_start_min >= datetime_stop_min)
+     {
+      Alert("Inconsistência de Horários de Negociação!");
+      return(INIT_FAILED);
+     }
+   if(datetime_stop_hour == datetime_close_hour && datetime_stop_min >= datetime_close_min)
+     {
+      Alert("Inconsistência de Horários de Negociação!");
+      return(INIT_FAILED);
+     }
 
 //---
    return(INIT_SUCCEEDED);
@@ -189,7 +246,10 @@ void OnTick()
         }
 
    if(buy_open || sell_open || order_pending) // posição aberta
+     {
+      trailing_stop(tick.last);
       return;
+     }
 
    if((signal_buy || signal_sell) && signal_timer == 0) // inicia duração do sinal
      {
@@ -197,7 +257,10 @@ void OnTick()
       return;
      }
 
-   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal) // caso o sinal se mantenha no tempo de duração sem posição aberta
+   if(datetime_mode == ENABLED && horafechamento())
+      fechaposicao();
+
+   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal && horanegociacao()) // caso o sinal se mantenha no tempo de duração sem posição aberta
      {
 
       double _price, _sl, _tp;
@@ -223,7 +286,7 @@ void OnTick()
 
      }
 
-   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last);
+   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\nHorário:", date.hour, ":", date.min);
 
   }
 
@@ -236,5 +299,98 @@ bool is_new_candle(const datetime barTime)
    bool            result      = barTime != barTimeLast;
    barTimeLast = barTime;
    return result;
+  }
+
+//+------------------------------------------------------------------+
+//| Trailing Stop                                                    |
+//+------------------------------------------------------------------+
+void trailing_stop(double preco)
+  {
+   for(int i=0; i<PositionsTotal(); i++)
+     {
+      if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic_number)
+        {
+         ulong ticket = PositionGetInteger(POSITION_TICKET);
+         double sl_current = PositionGetDouble(POSITION_SL);
+         double tp_current = PositionGetDouble(POSITION_TP);
+         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY && preco >= (sl_current + ts_period))
+           {
+            double sl_new = NormalizeDouble(sl_current + ts_steps, _Digits);
+            if(trade.PositionModify(ticket, sl_new, tp_current))
+               Print("TrailingStop - sem falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+            else
+               Print("TrailingStop - com falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+           }
+         else
+            if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL && preco <= (sl_current - ts_period))
+              {
+               double sl_new = NormalizeDouble(sl_current - ts_steps, _Digits);
+               if(trade.PositionModify(ticket, sl_new, tp_current))
+                  Print("TrailingStop - sem falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+               else
+                  Print("TrailingStop - com falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+              }
+        }
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Closing Time                                                     |
+//+------------------------------------------------------------------+
+bool horafechamento()
+  {
+   TimeToStruct(TimeCurrent(), date);
+   if(date.hour >= datetime_close_hour)
+     {
+      if(date.hour == datetime_close_hour)
+         if(date.min >= datetime_close_min)
+            return true;
+         else
+            return false;
+      return true;
+     }
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Operation Time                                                   |
+//+------------------------------------------------------------------+
+bool horanegociacao()
+  {
+   if(datetime_mode == DISABLED)
+      return true;
+   TimeToStruct(TimeCurrent(), date);
+   if(date.hour >= datetime_start_hour && date.hour <= datetime_stop_hour)
+     {
+      if(date.hour == datetime_start_hour)
+         if(date.min >= datetime_start_min)
+            return true;
+         else
+            return false;
+      if(date.hour == datetime_stop_hour)
+         if(date.min <= datetime_stop_min)
+            return true;
+         else
+            return false;
+      return true;
+     }
+   return false;
+  }
+
+//+------------------------------------------------------------------+
+//| Close Positions                                                  |
+//+------------------------------------------------------------------+
+void fechaposicao()
+  {
+   for(int i=0; i<PositionsTotal(); i++)
+     {
+      if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic_number)
+        {
+         if(trade.PositionClose(PositionGetInteger(POSITION_TICKET), deviation))
+            Print("Posição Fechada - sem falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+         else
+            Print("Posição Fechada - com falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
+        }
+     }
   }
 //+------------------------------------------------------------------+

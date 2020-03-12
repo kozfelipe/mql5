@@ -20,42 +20,47 @@ string                        stringtime_start[], stringtime_stop[], stringtime_
 datetime                      new_bar;
 enum                          ENUM_MODE {ENABLED, DISABLED};
 
-input string                  secao0 = "############################"; //### Definições Básicas ###
+input string                  secao1 = "############################"; //### Definições Básicas ###
 input ulong                   magic_number = 1; // magic number
 input ulong                   deviation = 50; // desvio
 input ENUM_ORDER_TYPE_FILLING filling = ORDER_FILLING_RETURN; // preenchimento
 input int                     fixo_tp = 20; // TP fixo
 input int                     fixo_sl = 5; // SL fixo
 
-input string                  secao1 = "############################"; //### Horário de Operação ###
+input string                  secao2 = "############################"; //### Horário de Operação ###
 input ENUM_MODE               datetime_mode = DISABLED; // ativar horário personalizado
 input string                  datetime_start = "09:20"; // inicio de abertura de posições
 input string                  datetime_stop = "17:20"; // encerramento de abertura de posições
 input string                  datetime_close = "17:40"; // fechamento de posições
 
-input string                  secao2 = "############################"; //### Indicadores ###
+input string                  secao3 = "############################"; //### Indicador RSI ###
+input ENUM_MODE               rsi_mode = DISABLED; // RSI - ativar
 input int                     rsi_period = 14; // RSI - período
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE; // RSI - tipo de preço
 input double                  rsi_level_min = 30; // RSI - banda mínima
 input double                  rsi_level_max = 70; // RSI - banda máxima
 
+input string                  secao4 = "############################"; //### Indicador ATR ###
+input ENUM_MODE               atr_mode = DISABLED; // ATR - ativar
 input int                     atr_period = 14; // ATR - período
 input double                  atr_fator_opening; // ATR - fator de abertura
 input double                  atr_fator_tp; // ATR - fator TP
 input double                  atr_fator_sl; // ATR - fator SL
 
+input string                  secao5 = "############################"; //### Indicador Bandas de Bolinger ###
+input ENUM_MODE               bb_mode = DISABLED; // Bolinger - ativar
 input int                     bb_period = 21; // Bolinger - período
 input ENUM_APPLIED_PRICE      bb_price = PRICE_CLOSE; // Bolinger - tipo de preço
 input int                     bb_shift = 0; // Bolinger - deslocamento
 input double                  bb_deviation = 2; // Bolinger - desvios padrão
 
-input string                  secao3 = "############################"; //### Trailing Stop ###
+input string                  secao6 = "############################"; //### Trailing Stop ###
 enum                          ENUM_TS {USER_DEFINED, FIXED, NONE};
-input ENUM_TS                 ts_mode = NONE; // TS - modo
+input ENUM_TS                 ts_mode = NONE; // TS - ativar
 input double                  ts_steps = 2; // TS - barras
 input double                  ts_period = 6; // TS - período
 
-input string                  secao4 = "############################"; //### Estratégia ###
+input string                  secao7 = "############################"; //### Estratégia ###
 input int                     ticks_de_entrada; // ticks de entrada
 input int                     qtd_candles_seguidos; // candles seguidos
 input int                     corpo_percent; // percentual tamanho do candle
@@ -199,12 +204,12 @@ void OnTick()
             signal_buy = false;
             break;
            }
-         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min)) // primeiro candle vermelho fora da faixa RSI
+         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min) && rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
            {
             signal_buy = false;
             break;
            }
-         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].close > bb_lower_buffer[1+i]) // ultimo candle vermelho dentro da banda inferior
+         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].close > bb_lower_buffer[1+i] && bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
            {
             signal_buy = false;
             break;
@@ -226,12 +231,12 @@ void OnTick()
             signal_sell = false;
             break;
            }
-         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min)) // primeiro candle verde fora da faixa RSI
+         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min) && rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
            {
             signal_sell = false;
             break;
            }
-         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].open < bb_upper_buffer[1+i]) // ultimo candle verde dentro da banda superior
+         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].open < bb_upper_buffer[1+i] && bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
            {
             signal_sell = false;
             break;
@@ -279,6 +284,9 @@ void OnTick()
      {
 
       double _price, _sl, _tp;
+      
+      if(atr_mode == DISABLED) 
+         atr_buffer[0] = 0;
 
       if(signal_buy)
         {

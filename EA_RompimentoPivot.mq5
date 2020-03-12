@@ -163,6 +163,9 @@ void OnTick()
       return;
      }
 
+   TimeToStruct(TimeCurrent(), date);
+   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min);
+
    if(CopyRates(_Symbol, _Period, 0, 3, rates) < 0) // atualiza rates
      {
       Alert("Falha na dedução das taxas: ", GetLastError());
@@ -285,8 +288,6 @@ void OnTick()
       signal_timer = 0;
 
      }
-
-   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\nHorário:", date.hour, ":", date.min);
 
   }
 

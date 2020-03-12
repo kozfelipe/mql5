@@ -26,7 +26,7 @@ input int                     fixo_sl = 5; // SL fixo
 
 input string                  secao1 = "############################"; //### Horário de Operação ###
 enum                          ENUM_DATE {ENABLED, DISABLED};
-input ENUM_DATE               datetime_mode; // ativar horário personalizado
+input ENUM_DATE               datetime_mode = DISABLED; // ativar horário personalizado
 input int                     datetime_start_hour = 10; // hora de inicio de abertura de posições
 input int                     datetime_start_min = 30; // minuto de inicio de abertura de posições
 input int                     datetime_stop_hour = 16; // hora de encerramento de abertura de posições

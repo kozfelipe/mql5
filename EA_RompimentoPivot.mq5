@@ -44,9 +44,9 @@ input double                  rsi_level_max = 70; // RSI - banda máxima
 input string                  secao4 = "############################"; //### Indicador ATR ###
 input ENUM_MODE               atr_mode = ENABLED; // ATR - ativar
 input int                     atr_period = 14; // ATR - período
-input double                  atr_fator_opening; // ATR - fator de abertura
-input double                  atr_fator_tp; // ATR - fator TP
-input double                  atr_fator_sl; // ATR - fator SL
+input double                  atr_fator_opening = 1; // ATR - fator de abertura
+input double                  atr_fator_tp = 1; // ATR - fator TP
+input double                  atr_fator_sl = 1; // ATR - fator SL
 
 input string                  secao5 = "############################"; //### Indicador Bandas de Bolinger ###
 input ENUM_MODE               bb_mode = ENABLED; // Bolinger - ativar
@@ -306,7 +306,7 @@ void OnTick()
       if(signal_sell)
         {
          _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
-         _tp =    NormalizeDouble(rates[0].high - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
+         _tp =    NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
          _sl =    NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
          if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());

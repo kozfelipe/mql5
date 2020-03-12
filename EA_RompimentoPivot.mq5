@@ -17,15 +17,16 @@ CTrade                        trade;
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
 int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0, datetime_start_hour, datetime_start_min, datetime_stop_hour, datetime_stop_min, datetime_close_hour, datetime_close_min;
 string                        stringtime_start[], stringtime_stop[], stringtime_close[];
-datetime                      new_bar;
 enum                          ENUM_MODE {ENABLED, DISABLED};
 
 input string                  secao1 = "############################"; //### Definições Básicas ###
 input ulong                   magic_number = 1; // magic number
 input ulong                   deviation = 50; // desvio
 input ENUM_ORDER_TYPE_FILLING filling = ORDER_FILLING_RETURN; // preenchimento
+input int                     bars_min = 60; // minimo de barras para operar
 input int                     fixo_tp = 20; // TP fixo
 input int                     fixo_sl = 5; // SL fixo
+input double                  lote = 5; // lote
 
 input string                  secao2 = "############################"; //### Horário de Operação ###
 input ENUM_MODE               datetime_mode = DISABLED; // ativar horário personalizado
@@ -73,6 +74,12 @@ int OnInit()
   {
 //---
    Print("Início...");
+   
+   if(Bars(_Symbol, _Period) < bars_min)
+     {
+      Alert("Existem menos de ", bars_min, " barras carregadas");
+      return(INIT_FAILED);
+     }
 
    rsi_handler = iRSI(
                     _Symbol,            // symbol name
@@ -115,7 +122,7 @@ int OnInit()
    trade.SetExpertMagicNumber(magic_number);
    trade.SetDeviationInPoints(deviation);
    trade.SetTypeFilling(filling);
-   
+
    StringSplit(datetime_start, ':', stringtime_start);
    StringSplit(datetime_stop, ':', stringtime_stop);
    StringSplit(datetime_close, ':', stringtime_close);
@@ -284,8 +291,8 @@ void OnTick()
      {
 
       double _price, _sl, _tp;
-      
-      if(atr_mode == DISABLED) 
+
+      if(atr_mode == DISABLED)
          atr_buffer[0] = 0;
 
       if(signal_buy)
@@ -293,7 +300,7 @@ void OnTick()
          _price = NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
          _sl =    NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
-         if(trade.Buy(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
+         if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
             Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
       if(signal_sell)
@@ -301,7 +308,7 @@ void OnTick()
          _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
          _tp =    NormalizeDouble(rates[0].high - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
          _sl =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
-         if(trade.Sell(NULL, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
+         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
 
@@ -316,9 +323,11 @@ void OnTick()
 //+------------------------------------------------------------------+
 bool is_new_candle()
   {
+   static datetime new_bar;
    if(new_bar != iTime(_Symbol,_Period, 0))
      {
       new_bar = iTime(_Symbol, _Period, 0);
+      Print("nova barra");
       return true;
      }
    return false;

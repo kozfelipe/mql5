@@ -113,6 +113,7 @@ int OnInit()
       return(INIT_FAILED);
      }
 
+   ChartSetInteger(0, CHART_SHOW_GRID, false);  
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), rsi_handler);
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), atr_handler);
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), bb_handler);

@@ -218,7 +218,7 @@ void OnTick()
          signal_buy = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
          signal_buy = false;
-      if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
+      if( (rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
          signal_buy = false;
       if(signal_buy)
          Print("Sinal de Compra");
@@ -237,7 +237,7 @@ void OnTick()
          signal_sell = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
          signal_sell = false;
-      if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
+      if( (rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
          signal_sell = false;
       if(signal_sell)
          Print("Sinal de Venda");

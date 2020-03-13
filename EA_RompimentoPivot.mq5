@@ -62,10 +62,14 @@ input double                  ts_steps = 2; // TS - barras
 input double                  ts_period = 6; // TS - período
 
 input string                  secao7 = "############################"; //### Estratégia ###
-input int                     ticks_de_entrada; // ticks de entrada
-input int                     qtd_candles_seguidos; // candles seguidos
-input int                     corpo_percent; // percentual tamanho do candle
-input int                     duracao_sinal; // segundos de duração do sinal
+input ENUM_MODE               filter_candles_mode = ENABLED; // Filtro 1 - ativar
+input int                     filter_candles_value = 2; // Filtro 1 - candles anteriors
+input ENUM_MODE               filter_bb_mode = ENABLED; // Filtro 2 - ativar
+input ENUM_MODE               filter_rsi_mode = ENABLED; // Filtro 3 - ativar
+input ENUM_MODE               filter_corpo_mode = ENABLED; // Filtro 4 - ativar
+input int                     filter_corpo_percent = 100; // Filtro 4 - percentual tamanho do candle
+input int                     ticks_de_entrada = 1; // ticks de entrada
+input int                     duracao_sinal = 1; // segundos de duração do sinal
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -74,7 +78,7 @@ int OnInit()
   {
 //---
    Print("Início...");
-   
+
    if(Bars(_Symbol, _Period) < bars_min)
      {
       Alert("Existem menos de ", bars_min, " barras carregadas");
@@ -204,25 +208,17 @@ void OnTick()
    if(rates[0].low < rates[1].low && rates[0].close > rates[1].close)   // pivot verde
      {
       signal_buy = true;
-      for(int i = 0; i < qtd_candles_seguidos; i++)
-        {
-         if(rates[1+i].open < rates[1+i].close) // candles anteriores devem ser vermelhos
+      for(int i = 0; i < filter_candles_value; i++)
+         if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
            {
             signal_buy = false;
             break;
            }
-         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min) && rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
-           {
-            signal_buy = false;
-            break;
-           }
-         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].close > bb_lower_buffer[1+i] && bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
-           {
-            signal_buy = false;
-            break;
-           }
-        }
-      if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
+      if(rates[1].close > bb_lower_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
+         signal_buy = false;
+      if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
+         signal_buy = false;
+      if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
          signal_buy = false;
       if(signal_buy)
          Print("Sinal de Compra");
@@ -231,28 +227,20 @@ void OnTick()
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
      {
       signal_sell = true;
-      for(int i = 0; i < qtd_candles_seguidos; i++)
-        {
-         if(rates[1+i].open < rates[1+i].close) // candles anteriores devem ser verdes
+      for(int i = 0; i < filter_candles_value; i++)
+         if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
             signal_sell = false;
             break;
            }
-         if(i == 0 && (rsi_buffer[1+i] > rsi_level_max || rsi_buffer[1+i] < rsi_level_min) && rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
-           {
-            signal_sell = false;
-            break;
-           }
-         if(i == (int)(qtd_candles_seguidos - 1) && rates[1+i].open < bb_upper_buffer[1+i] && bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
-           {
-            signal_sell = false;
-            break;
-           }
-         if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < corpo_percent) // corpo fora do percentual
-            signal_sell = false;
-         if(signal_sell)
-            Print("Sinal de Venda");
-        }
+      if(rates[1].open < bb_upper_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
+         signal_sell = false;
+      if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
+         signal_sell = false;
+      if((fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
+         signal_sell = false;
+      if(signal_sell)
+         Print("Sinal de Venda");
      }
 
    for(int i=0; i<PositionsTotal(); i++) // status da posição
@@ -297,7 +285,7 @@ void OnTick()
 
       if(signal_buy)
         {
-         _price = NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits);
+         _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
          _sl =    NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
          if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
@@ -305,9 +293,9 @@ void OnTick()
         }
       if(signal_sell)
         {
-         _price = NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits);
-         _tp =    NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits);
-         _sl =    NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits);
+         _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
+         _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
+         _sl =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits), _Symbol);
          if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
         }
@@ -327,7 +315,6 @@ bool is_new_candle()
    if(new_bar != iTime(_Symbol,_Period, 0))
      {
       new_bar = iTime(_Symbol, _Period, 0);
-      Print("nova barra");
       return true;
      }
    return false;
@@ -424,5 +411,28 @@ void fechaposicao()
             Print("Posição Fechada - com falha. ResultRetcode: ", trade.ResultRetcode(), ", RetcodeDescription: ", trade.ResultRetcodeDescription());
         }
      }
+  }
+//+------------------------------------------------------------------+
+//| Arredonda o preço ao múltiplo do Símbolo                         |
+//+------------------------------------------------------------------+
+double NormalizePrice(double price, string symbol=NULL, double tick=0)
+  {
+   static const double _tick = tick ? tick : SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+   return round(price / _tick) * _tick;
+  }
+//+------------------------------------------------------------------+
+//| Arredonda o volume                                               |
+//+------------------------------------------------------------------+
+double NormalizeVolume(double volume)
+  {
+   static const double min  = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   static const double max  = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   static const int digits  = (int)-
+                              MathLog10(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP));
+   if(volume < min)
+      volume = min;
+   if(volume > max)
+      volume = max;
+   return NormalizeDouble(volume, digits);
   }
 //+------------------------------------------------------------------+

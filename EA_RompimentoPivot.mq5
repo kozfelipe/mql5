@@ -15,9 +15,17 @@ MqlDateTime                   date;
 CTrade                        trade;
 
 double                        rsi_buffer[], atr_buffer[], bb_upper_buffer[], bb_lower_buffer[];
-int                           rsi_handler, atr_handler, bb_handler, signal_timer = 0, datetime_start_hour, datetime_start_min, datetime_stop_hour, datetime_stop_min, datetime_close_hour, datetime_close_min;
+int                           rsi_handler, atr_handler, bb_handler, datetime_start_hour, datetime_start_min, datetime_stop_hour, datetime_stop_min, datetime_close_hour, datetime_close_min;
 string                        stringtime_start[], stringtime_stop[], stringtime_close[];
 enum                          ENUM_MODE {ENABLED, DISABLED};
+enum                          ENUM_PIVOT {RED, GREEN};
+
+struct Pivot
+  {
+   int                        timer;
+   double                     price;
+   ENUM_PIVOT                 type;
+  } pivot;
 
 input string                  secao1 = "############################"; //### Definições Básicas ###
 input ulong                   magic_number = 1; // magic number
@@ -113,7 +121,7 @@ int OnInit()
       return(INIT_FAILED);
      }
 
-   ChartSetInteger(0, CHART_SHOW_GRID, false);  
+   ChartSetInteger(0, CHART_SHOW_GRID, false);
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), rsi_handler);
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), atr_handler);
    ChartIndicatorAdd(ChartID(), (int)ChartGetInteger(0,CHART_WINDOWS_TOTAL), bb_handler);
@@ -127,6 +135,8 @@ int OnInit()
    trade.SetExpertMagicNumber(magic_number);
    trade.SetDeviationInPoints(deviation);
    trade.SetTypeFilling(filling);
+
+   pivot.timer = 0;
 
    StringSplit(datetime_start, ':', stringtime_start);
    StringSplit(datetime_stop, ':', stringtime_stop);
@@ -177,7 +187,7 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 
-   if(!is_new_candle() && signal_timer == 0) // tick a cada novo candle caso não haja sinal ativo
+   if(!is_new_candle() && pivot.timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
    bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false, order_pending = false;
@@ -206,6 +216,12 @@ void OnTick()
       return;
      }
 
+   if(datetime_mode == ENABLED && horafechamento())
+     {
+      fechaposicao();
+      return;
+     }
+
    if(rates[0].low < rates[1].low && rates[0].close > rates[1].close)   // pivot verde
      {
       signal_buy = true;
@@ -219,10 +235,16 @@ void OnTick()
          signal_buy = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
          signal_buy = false;
-      if( (rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
+      if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal_buy = false;
       if(signal_buy)
-         Print("Sinal de Compra");
+        {
+         Print("Pivot Verde");
+         pivot.type = RED;
+         pivot.price = rates[0].high;
+         pivot.timer = TimeCurrent();
+         return;
+        }
      }
 
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
@@ -238,10 +260,16 @@ void OnTick()
          signal_sell = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
          signal_sell = false;
-      if( (rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED) // corpo fora do percentual
+      if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal_sell = false;
       if(signal_sell)
-         Print("Sinal de Venda");
+        {
+         Print("Pivot Vermelho");
+         pivot.type = GREEN;
+         pivot.price = rates[0].low;
+         pivot.timer = TimeCurrent();
+         return;
+        }
      }
 
    for(int i=0; i<PositionsTotal(); i++) // status da posição
@@ -267,16 +295,10 @@ void OnTick()
       return;
      }
 
-   if((signal_buy || signal_sell) && signal_timer == 0) // inicia duração do sinal
-     {
-      signal_timer = TimeCurrent();
-      return;
-     }
+   if(pivot.timer > 0 && (TimeCurrent() - pivot.timer) > duracao_sinal)
+      pivot.timer = 0;
 
-   if(datetime_mode == ENABLED && horafechamento())
-      fechaposicao();
-
-   if((signal_buy || signal_sell) && signal_timer > 0 && (TimeCurrent() - signal_timer) >= duracao_sinal && horanegociacao()) // caso o sinal se mantenha no tempo de duração sem posição aberta
+   if(pivot.timer > 0 && (TimeCurrent() - pivot.timer) <= duracao_sinal && horanegociacao())  // rompimento dentro do tempo de duracao do sinal
      {
 
       double _price, _sl, _tp;
@@ -284,24 +306,30 @@ void OnTick()
       if(atr_mode == DISABLED)
          atr_buffer[0] = 0;
 
-      if(signal_buy)
+      if(signal_buy && tick.ask > pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
          _sl =    NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
-         if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot verde"))
+         if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Verde"))
+           {
             Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+            pivot.timer = 0;
+            return;
+           }
         }
-      if(signal_sell)
+      if(signal_sell && tick.bid < pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
          _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
          _sl =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits), _Symbol);
-         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "rompimento de pivot vermelho"))
+         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "=Rompimento de Pivot Vermelho"))
+           {
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+            pivot.timer = 0;
+            return;
+           }
         }
-
-      signal_timer = 0;
 
      }
 

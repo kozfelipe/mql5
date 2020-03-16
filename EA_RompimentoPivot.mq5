@@ -77,7 +77,7 @@ input ENUM_MODE               filter_rsi_mode = ENABLED; // Filtro 3 - ativar
 input ENUM_MODE               filter_corpo_mode = ENABLED; // Filtro 4 - ativar
 input int                     filter_corpo_percent = 100; // Filtro 4 - percentual tamanho do candle
 input int                     ticks_de_entrada = 1; // ticks de entrada
-input int                     duracao_sinal = 1; // segundos de duração do sinal
+input int                     duracao_sinal = 600; // segundos de duração do sinal
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -190,7 +190,7 @@ void OnTick()
    if(!is_new_candle() && pivot.timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
-   bool signal_buy = false, signal_sell = false, buy_open = false, sell_open = false, order_pending = false;
+   bool signal = false, buy_open = false, sell_open = false, order_pending = false;
 
    if(!SymbolInfoTick(_Symbol, tick)) // atualiza tick
      {
@@ -199,7 +199,7 @@ void OnTick()
      }
 
    TimeToStruct(TimeCurrent(), date);
-   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min);
+   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min, "\nSignal: ", ((uint)TimeCurrent() - (uint)pivot.timer), " seconds");
 
    if(CopyRates(_Symbol, _Period, 0, 3, rates) < 0) // atualiza rates
      {
@@ -224,45 +224,45 @@ void OnTick()
 
    if(rates[0].low < rates[1].low && rates[0].close > rates[1].close)   // pivot verde
      {
-      signal_buy = true;
+      signal = true;
       for(int i = 0; i < filter_candles_value; i++)
          if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
            {
-            signal_buy = false;
+            signal = false;
             break;
            }
       if(rates[1].close > bb_lower_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
-         signal_buy = false;
+         signal = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
-         signal_buy = false;
+         signal = false;
       if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
-         signal_buy = false;
-      if(signal_buy)
+         signal = false;
+      if(signal)
         {
          Print("Pivot Verde");
          pivot.type = RED;
          pivot.price = rates[0].high;
-         pivot.timer = TimeCurrent();
+         pivot.timer = (uint)TimeCurrent();
          return;
         }
      }
 
    if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
      {
-      signal_sell = true;
+      signal = true;
       for(int i = 0; i < filter_candles_value; i++)
          if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
-            signal_sell = false;
+            signal = false;
             break;
            }
       if(rates[1].open < bb_upper_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
-         signal_sell = false;
+         signal = false;
       if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
-         signal_sell = false;
+         signal = false;
       if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
-         signal_sell = false;
-      if(signal_sell)
+         signal = false;
+      if(signal)
         {
          Print("Pivot Vermelho");
          pivot.type = GREEN;
@@ -295,10 +295,13 @@ void OnTick()
       return;
      }
 
-   if(pivot.timer > 0 && (TimeCurrent() - pivot.timer) > duracao_sinal)
+   if(pivot.timer > 0 && ((uint)TimeCurrent() - (uint)pivot.timer) > duracao_sinal)
+     {
       pivot.timer = 0;
+      Print("Expirado");
+     }
 
-   if(pivot.timer > 0 && (TimeCurrent() - pivot.timer) <= duracao_sinal && horanegociacao())  // rompimento dentro do tempo de duracao do sinal
+   if(pivot.timer > 0 && ((uint)TimeCurrent() - (uint)pivot.timer) <= duracao_sinal && horanegociacao())  // rompimento dentro do tempo de duracao do sinal
      {
 
       double _price, _sl, _tp;
@@ -306,7 +309,7 @@ void OnTick()
       if(atr_mode == DISABLED)
          atr_buffer[0] = 0;
 
-      if(signal_buy && tick.ask > pivot.price) // rompimento
+      if(tick.ask > pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
@@ -315,10 +318,11 @@ void OnTick()
            {
             Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
             pivot.timer = 0;
+            Print("Reiniciando");
             return;
            }
         }
-      if(signal_sell && tick.bid < pivot.price) // rompimento
+      if(tick.bid < pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
          _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
@@ -327,6 +331,7 @@ void OnTick()
            {
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
             pivot.timer = 0;
+            Print("Reiniciando");
             return;
            }
         }

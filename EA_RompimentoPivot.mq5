@@ -240,7 +240,7 @@ void OnTick()
       if(signal)
         {
          Print("Pivot Verde");
-         pivot.type = RED;
+         pivot.type = GREEN;
          pivot.price = rates[0].high;
          pivot.timer = (uint)TimeCurrent();
          return;
@@ -265,7 +265,7 @@ void OnTick()
       if(signal)
         {
          Print("Pivot Vermelho");
-         pivot.type = GREEN;
+         pivot.type = RED;
          pivot.price = rates[0].low;
          pivot.timer = TimeCurrent();
          return;

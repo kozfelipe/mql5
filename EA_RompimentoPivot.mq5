@@ -309,7 +309,7 @@ void OnTick()
       if(atr_mode == DISABLED)
          atr_buffer[0] = 0;
 
-      if(tick.ask > pivot.price) // rompimento
+      if(pivot.price == GREEN && tick.ask > pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
          _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
@@ -322,7 +322,7 @@ void OnTick()
             return;
            }
         }
-      if(tick.bid < pivot.price) // rompimento
+      if(pivot.price == RED && tick.bid < pivot.price) // rompimento
         {
          _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
          _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);

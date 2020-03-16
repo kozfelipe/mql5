@@ -289,7 +289,7 @@ void OnTick()
          break;
         }
 
-   if(buy_open || sell_open || order_pending) // posição aberta
+   if((buy_open || sell_open || order_pending) && ts_mode != NONE)   // posição aberta
      {
       trailing_stop(tick.last);
       return;

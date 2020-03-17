@@ -247,7 +247,7 @@ void OnTick()
         }
      }
 
-   if(rates[0].high > rates[1].high && rates[0].close > rates[1].close)   // pivot vermelho
+   if(rates[0].high > rates[1].high && rates[0].close < rates[1].close)   // pivot vermelho
      {
       signal = true;
       for(int i = 0; i < filter_candles_value; i++)

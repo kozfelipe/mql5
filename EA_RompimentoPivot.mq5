@@ -327,7 +327,7 @@ void OnTick()
          _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
          _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
          _sl =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits), _Symbol);
-         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "=Rompimento de Pivot Vermelho"))
+         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Vermelho"))
            {
             Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
             pivot.timer = 0;

@@ -9,6 +9,8 @@
 
 #include <Trade\Trade.mqh>
 
+#define UNINITIALIZED 0xcdcdcdcd
+
 MqlTick                       tick;
 MqlRates                      rates[];
 MqlDateTime                   date;
@@ -77,7 +79,7 @@ input ENUM_MODE               filter_rsi_mode = ENABLED; // Filtro 3 - ativar
 input ENUM_MODE               filter_corpo_mode = ENABLED; // Filtro 4 - ativar
 input int                     filter_corpo_percent = 100; // Filtro 4 - percentual tamanho do candle
 input int                     ticks_de_entrada = 1; // ticks de entrada
-input int                     duracao_sinal = 600; // segundos de duração do sinal
+input int                     duracao_sinal = 1200; // segundos de duração do sinal
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -201,7 +203,7 @@ void OnTick()
    TimeToStruct(TimeCurrent(), date);
    Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min, "\nSignal: ", ((uint)TimeCurrent() - (uint)pivot.timer), " seconds");
 
-   if(CopyRates(_Symbol, _Period, 0, 3, rates) < 0) // atualiza rates
+   if(CopyRates(_Symbol, _Period, 0, 10, rates) < 0) // atualiza rates
      {
       Alert("Falha na dedução das taxas: ", GetLastError());
       return;
@@ -222,52 +224,54 @@ void OnTick()
       return;
      }
 
-   if(rates[0].low < rates[1].low && rates[0].close > rates[1].close)   // pivot verde
+   if(rates[1].low < rates[2].low && rates[1].close > rates[2].close)   // pivot verde
      {
       signal = true;
-      for(int i = 0; i < filter_candles_value; i++)
-         if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
+      for(int i = 1; i <= filter_candles_value; i++)
+         if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
            {
             signal = false;
             break;
            }
-      if(rates[1].close > bb_lower_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
+      if(rates[2].close > bb_lower_buffer[2] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
          signal = false;
-      if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
+      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
          signal = false;
-      if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
+      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal = false;
       if(signal)
         {
-         Print("Pivot Verde");
+         ObjectCreate(0, TimeCurrent()+" Verde", OBJ_ARROW, 0, rates[1].time, rates[1].low - 10);
+         ObjectSetInteger(0, TimeCurrent()+" Verde", OBJPROP_COLOR, clrGreen);
          pivot.type = GREEN;
-         pivot.price = rates[0].high;
-         pivot.timer = (uint)TimeCurrent();
+         pivot.price = rates[1].high;
+         pivot.timer = iTime(_Symbol, _Period, 1);
          return;
         }
      }
 
-   if(rates[0].high > rates[1].high && rates[0].close < rates[1].close)   // pivot vermelho
+   if(rates[1].high > rates[2].high && rates[1].close < rates[2].close)   // pivot vermelho
      {
       signal = true;
-      for(int i = 0; i < filter_candles_value; i++)
-         if(rates[1+i].open < rates[1+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
+      for(int i = 1; i <= filter_candles_value; i++)
+         if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
             signal = false;
             break;
            }
-      if(rates[1].open < bb_upper_buffer[1] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
+      if(rates[2].open < bb_upper_buffer[2] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
          signal = false;
-      if((rsi_buffer[1] > rsi_level_max || rsi_buffer[1] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
+      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
          signal = false;
-      if((rates[0].high - rates[0].low != 0) && (fabs(rates[0].close - rates[0].open)/fabs(rates[0].high - rates[0].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
+      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal = false;
       if(signal)
         {
-         Print("Pivot Vermelho");
+         ObjectCreate(0, TimeCurrent()+" Vermelho", OBJ_ARROW, 0, rates[1].time, rates[1].low - 10);
+         ObjectSetInteger(0, TimeCurrent()+" Vermelho", OBJPROP_COLOR, clrRed);
          pivot.type = RED;
-         pivot.price = rates[0].low;
-         pivot.timer = TimeCurrent();
+         pivot.price = rates[1].low;
+         pivot.timer = iTime(_Symbol, _Period, 1);
          return;
         }
      }
@@ -295,48 +299,48 @@ void OnTick()
       return;
      }
 
-   if(pivot.timer > 0 && ((uint)TimeCurrent() - (uint)pivot.timer) > duracao_sinal)
+   if(pivot.timer > 0 && ((uint)TimeCurrent() - pivot.timer) > duracao_sinal)
      {
+      Print("Expirado ", ((uint)TimeCurrent() - pivot.timer)/60, " minutos");
       pivot.timer = 0;
-      Print("Expirado");
      }
-
-   if(pivot.timer > 0 && ((uint)TimeCurrent() - (uint)pivot.timer) <= duracao_sinal && horanegociacao())  // rompimento dentro do tempo de duracao do sinal
-     {
-
-      double _price, _sl, _tp;
-
-      if(atr_mode == DISABLED)
-         atr_buffer[0] = 0;
-
-      if(pivot.price == GREEN && tick.ask > pivot.price) // rompimento
+   else
+      if(pivot.timer > 0 && horanegociacao())  // verifica rompimento dentro do tempo de duracao do sinal
         {
-         _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
-         _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
-         _sl =    NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
-         if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Verde"))
-           {
-            Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
-            pivot.timer = 0;
-            Print("Reiniciando");
-            return;
-           }
-        }
-      if(pivot.price == RED && tick.bid < pivot.price) // rompimento
-        {
-         _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
-         _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
-         _sl =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits), _Symbol);
-         if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Vermelho"))
-           {
-            Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
-            pivot.timer = 0;
-            Print("Reiniciando");
-            return;
-           }
-        }
 
-     }
+         double _price, _sl, _tp;
+
+         if(atr_mode == DISABLED)
+            atr_buffer[0] = 0;
+
+         if(pivot.price == GREEN && tick.ask > pivot.price) // rompimento
+           {
+            _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
+            _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
+            _sl =    NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits);
+            if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Verde"))
+              {
+               Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+               pivot.timer = 0;
+               Print("Reiniciando");
+               return;
+              }
+           }
+         if(pivot.price == RED && tick.bid < pivot.price) // rompimento
+           {
+            _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
+            _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);
+            _sl =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_sl * atr_buffer[0] + (fixo_sl * tick.bid) / 100000, _Digits), _Symbol);
+            if(trade.Sell(lote, _Symbol, _price, _sl, _tp, "=Rompimento de Pivot Vermelho"))
+              {
+               Print("Ordem de Venda: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+               pivot.timer = 0;
+               Print("Reiniciando");
+               return;
+              }
+           }
+
+        }
 
   }
 

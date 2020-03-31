@@ -9,8 +9,6 @@
 
 #include <Trade\Trade.mqh>
 
-#define UNINITIALIZED 0xcdcdcdcd
-
 MqlTick                       tick;
 MqlRates                      rates[];
 MqlDateTime                   date;
@@ -201,7 +199,8 @@ void OnTick()
      }
 
    TimeToStruct(TimeCurrent(), date);
-   Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min, "\nSignal: ", ((uint)TimeCurrent() - (uint)pivot.timer), " seconds");
+   if(pivot.timer > 0)
+      Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min, "\nTempo Sinal: ", ((uint)TimeCurrent() - (uint)pivot.timer)/60, " minutos");
 
    if(CopyRates(_Symbol, _Period, 0, 10, rates) < 0) // atualiza rates
      {
@@ -313,7 +312,7 @@ void OnTick()
          if(atr_mode == DISABLED)
             atr_buffer[0] = 0;
 
-         if(pivot.price == GREEN && tick.ask > pivot.price) // rompimento
+         if(pivot.type == GREEN && tick.ask > pivot.price) // rompimento
            {
             _price = NormalizeVolume(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
             _tp =    NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits);
@@ -326,7 +325,7 @@ void OnTick()
                return;
               }
            }
-         if(pivot.price == RED && tick.bid < pivot.price) // rompimento
+         if(pivot.type == RED && tick.bid < pivot.price) // rompimento
            {
             _price = NormalizeVolume(NormalizeDouble(rates[0].low - atr_fator_opening * atr_buffer[0] - (ticks_de_entrada * tick.bid) / 100000, _Digits));
             _tp =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_tp * atr_buffer[0] - (fixo_tp * tick.bid) / 100000, _Digits), _Symbol);

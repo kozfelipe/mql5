@@ -223,6 +223,29 @@ void OnTick()
       return;
      }
 
+   for(int i=0; i<PositionsTotal(); i++) // status da posição
+      if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic_number)
+        {
+         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
+            buy_open = true;
+         if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+            sell_open = true;
+         break;
+        }
+
+   for(int i=0; i<OrdersTotal(); i++) // ordem pendente
+      if(OrderGetString(ORDER_SYMBOL) == _Symbol && OrderGetInteger(ORDER_MAGIC) == magic_number)
+        {
+         order_pending = true;
+         break;
+        }
+
+   if((buy_open || sell_open || order_pending) && ts_mode != NONE)   // posição aberta
+     {
+      trailing_stop(tick.last);
+      return;
+     }
+
    if(rates[1].low < rates[2].low && rates[1].close > rates[2].close)   // pivot verde
      {
       signal = true;
@@ -273,29 +296,6 @@ void OnTick()
          pivot.timer = iTime(_Symbol, _Period, 1);
          return;
         }
-     }
-
-   for(int i=0; i<PositionsTotal(); i++) // status da posição
-      if(PositionGetSymbol(i) == _Symbol && PositionGetInteger(POSITION_MAGIC) == magic_number)
-        {
-         if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY)
-            buy_open = true;
-         if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-            sell_open = true;
-         break;
-        }
-
-   for(int i=0; i<OrdersTotal(); i++) // ordem pendente
-      if(OrderGetString(ORDER_SYMBOL) == _Symbol && OrderGetInteger(ORDER_MAGIC) == magic_number)
-        {
-         order_pending = true;
-         break;
-        }
-
-   if((buy_open || sell_open || order_pending) && ts_mode != NONE)   // posição aberta
-     {
-      trailing_stop(tick.last);
-      return;
      }
 
    if(pivot.timer > 0 && ((uint)TimeCurrent() - pivot.timer) > duracao_sinal)

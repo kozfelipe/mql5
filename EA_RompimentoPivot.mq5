@@ -43,21 +43,18 @@ input string                  datetime_stop = "17:20"; // encerramento de abertu
 input string                  datetime_close = "17:40"; // fechamento de posições
 
 input string                  secao3 = "############################"; //### Indicador RSI ###
-input ENUM_MODE               rsi_mode = ENABLED; // RSI - ativar
 input int                     rsi_period = 14; // RSI - período
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE; // RSI - tipo de preço
 input double                  rsi_level_min = 30; // RSI - banda mínima
 input double                  rsi_level_max = 70; // RSI - banda máxima
 
 input string                  secao4 = "############################"; //### Indicador ATR ###
-input ENUM_MODE               atr_mode = ENABLED; // ATR - ativar
 input int                     atr_period = 14; // ATR - período
 input double                  atr_fator_opening = 1; // ATR - fator de abertura
 input double                  atr_fator_tp = 1; // ATR - fator TP
 input double                  atr_fator_sl = 1; // ATR - fator SL
 
 input string                  secao5 = "############################"; //### Indicador Bandas de Bolinger ###
-input ENUM_MODE               bb_mode = ENABLED; // Bolinger - ativar
 input int                     bb_period = 21; // Bolinger - período
 input ENUM_APPLIED_PRICE      bb_price = PRICE_CLOSE; // Bolinger - tipo de preço
 input int                     bb_shift = 0; // Bolinger - deslocamento
@@ -249,15 +246,15 @@ void OnTick()
    if(rates[1].low < rates[2].low && rates[1].close > rates[2].close)   // pivot verde
      {
       signal = true;
-      for(int i = 1; i <= filter_candles_value; i++)
+      for(int i = 0; i < filter_candles_value; i++)
          if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
            {
             signal = false;
             break;
            }
-      if(rates[2].close > bb_lower_buffer[2] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
+      if(rates[2].close > bb_lower_buffer[2] && filter_bb_mode == ENABLED) // ultimo candle vermelho dentro da banda inferior
          signal = false;
-      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
+      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
          signal = false;
       if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal = false;
@@ -275,15 +272,15 @@ void OnTick()
    if(rates[1].high > rates[2].high && rates[1].close < rates[2].close)   // pivot vermelho
      {
       signal = true;
-      for(int i = 1; i <= filter_candles_value; i++)
+      for(int i = 0; i < filter_candles_value; i++)
          if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
             signal = false;
             break;
            }
-      if(rates[2].open < bb_upper_buffer[2] && bb_mode == ENABLED && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
+      if(rates[2].open < bb_upper_buffer[2] && filter_bb_mode == ENABLED) // ultimo candle verde dentro da banda superior
          signal = false;
-      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && rsi_mode == ENABLED && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
+      if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
          signal = false;
       if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
          signal = false;
@@ -308,9 +305,6 @@ void OnTick()
         {
 
          double _price, _sl, _tp;
-
-         if(atr_mode == DISABLED)
-            atr_buffer[0] = 0;
 
          if(pivot.type == GREEN && tick.ask > pivot.price) // rompimento
            {

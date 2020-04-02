@@ -256,7 +256,7 @@ void OnTick()
          signal = false;
       if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && filter_rsi_mode == ENABLED) // primeiro candle vermelho fora da faixa RSI
          signal = false;
-      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
+      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_corpo_mode == ENABLED)  // corpo fora do percentual
          signal = false;
       if(signal)
         {
@@ -282,7 +282,7 @@ void OnTick()
          signal = false;
       if((rsi_buffer[2] > rsi_level_max || rsi_buffer[2] < rsi_level_min) && filter_rsi_mode == ENABLED) // primeiro candle verde fora da faixa RSI
          signal = false;
-      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_candles_mode == ENABLED)  // corpo fora do percentual
+      if((rates[1].high - rates[1].low != 0) && (fabs(rates[1].close - rates[1].open)/fabs(rates[1].high - rates[1].low)*100) < filter_corpo_percent && filter_corpo_mode == ENABLED)  // corpo fora do percentual
          signal = false;
       if(signal)
         {

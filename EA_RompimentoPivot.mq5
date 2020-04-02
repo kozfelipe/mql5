@@ -273,7 +273,7 @@ void OnTick()
      {
       signal = true;
       for(int i = 0; i < filter_candles_value; i++)
-         if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
+         if(rates[2+i].open > rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
             signal = false;
             break;

@@ -72,7 +72,7 @@ input int                     filter_candles_value = 2; // Filtro 1 - candles an
 input ENUM_MODE               filter_bb_mode = ENABLED; // Filtro 2 - ativar
 input ENUM_MODE               filter_rsi_mode = ENABLED; // Filtro 3 - ativar
 input ENUM_MODE               filter_corpo_mode = ENABLED; // Filtro 4 - ativar
-input int                     filter_corpo_percent = 100; // Filtro 4 - percentual tamanho do candle
+input int                     filter_corpo_percent = 10; // Filtro 4 - percentual tamanho do candle
 input int                     ticks_de_entrada = 1; // ticks de entrada
 input int                     duracao_sinal = 1200; // segundos de duração do sinal
 

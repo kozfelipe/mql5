@@ -184,6 +184,12 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 
+   if(datetime_mode == ENABLED && horafechamento())
+     {
+      fechaposicao();
+      return;
+     }
+
    if(!is_new_candle() && pivot.timer == 0) // tick a cada novo candle caso não haja sinal ativo
       return;
 
@@ -211,12 +217,6 @@ void OnTick()
       !CopyBuffer(bb_handler, 2, 0, 3, bb_lower_buffer)) // atualiza indicadores
      {
       Alert("Falha no preenchimento do buffer ", GetLastError());
-      return;
-     }
-
-   if(datetime_mode == ENABLED && horafechamento())
-     {
-      fechaposicao();
       return;
      }
 

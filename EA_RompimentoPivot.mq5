@@ -309,8 +309,10 @@ void OnTick()
          if(pivot.type == GREEN && tick.ask > pivot.price) // rompimento
            {
             _price = NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_opening * atr_buffer[0] + (ticks_de_entrada * tick.ask) / 100000, _Digits));
-            _tp =    NormalizePrice(_price + NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits));
-            _sl =    NormalizePrice(_price - NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits));
+            /*_tp =    NormalizePrice(_price + NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits));
+            _sl =    NormalizePrice(_price - NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits));*/
+            _tp =    NormalizePrice(NormalizeDouble(rates[0].high + atr_fator_tp * atr_buffer[0] + (fixo_tp * tick.ask) / 100000, _Digits));
+            _sl =    NormalizePrice(NormalizeDouble(rates[0].low - atr_fator_sl * atr_buffer[0] - (fixo_sl * tick.ask) / 100000, _Digits));
             if(trade.Buy(lote, _Symbol, _price, _sl, _tp, "Rompimento de Pivot Verde"))
               {
                Print("Ordem de Compra: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());

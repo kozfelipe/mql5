@@ -43,19 +43,22 @@ input string                  datetime_stop = "17:20"; // encerramento de abertu
 input string                  datetime_close = "17:40"; // fechamento de posições
 
 input string                  secao3 = "############################"; //### Indicador RSI ###
-input int                     rsi_period = 14; // RSI - período
+input ENUM_TIMEFRAMES         rsi_period = PERIOD_CURRENT; // RSI - período
+input int                     rsi_avgperiod = 14; // RSI - período médio
 input ENUM_APPLIED_PRICE      rsi_price = PRICE_CLOSE; // RSI - tipo de preço
 input double                  rsi_level_min = 30; // RSI - banda mínima
 input double                  rsi_level_max = 70; // RSI - banda máxima
 
 input string                  secao4 = "############################"; //### Indicador ATR ###
-input int                     atr_period = 14; // ATR - período
+input ENUM_TIMEFRAMES         atr_period = PERIOD_CURRENT; // ATR - período
+input int                     atr_avgperiod = 14; // ATR - período médio
 input double                  atr_fator_opening = 1; // ATR - fator de abertura
 input double                  atr_fator_tp = 1; // ATR - fator TP
 input double                  atr_fator_sl = 1; // ATR - fator SL
 
 input string                  secao5 = "############################"; //### Indicador Bandas de Bolinger ###
-input int                     bb_period = 21; // Bolinger - período
+input ENUM_TIMEFRAMES         bb_period = PERIOD_CURRENT; // Bolinger - período
+input int                     bb_avgperiod = 21; // Bolinger - período médio
 input ENUM_APPLIED_PRICE      bb_price = PRICE_CLOSE; // Bolinger - tipo de preço
 input int                     bb_shift = 0; // Bolinger - deslocamento
 input double                  bb_deviation = 2; // Bolinger - desvios padrão
@@ -92,21 +95,21 @@ int OnInit()
 
    rsi_handler = iRSI(
                     _Symbol,            // symbol name
-                    _Period,            // period
-                    rsi_period,         // averaging period
+                    rsi_period,         // period
+                    rsi_avgperiod,      // averaging period
                     rsi_price           // type of price or handle
                  );
 
    atr_handler = iATR(
                     _Symbol,            // symbol name
-                    _Period,            // period
-                    rsi_period          // averaging period
+                    atr_period,         // period
+                    atr_avgperiod       // averaging period
                  );
 
    bb_handler = iBands(
                    _Symbol,       // symbol name
-                   _Period,       // period
-                   bb_period,     // averaging period
+                   bb_period,     // period
+                   bb_avgperiod,  // averaging period
                    bb_shift,      // band shift
                    bb_deviation,  // deviation
                    bb_price       // type of price or handle

@@ -10,7 +10,7 @@
 #include <Trade\Trade.mqh>
 
 MqlTick                       tick;
-MqlRates                      rates[];
+MqlRates                      rates[], candles[];
 MqlDateTime                   date;
 CTrade                        trade;
 
@@ -78,6 +78,8 @@ input ENUM_MODE               filter_corpo_mode = ENABLED; // Filtro 4 - ativar
 input int                     filter_corpo_percent = 10; // Filtro 4 - percentual tamanho do candle
 input int                     ticks_de_entrada = 1; // ticks de entrada
 input int                     duracao_sinal = 1200; // segundos de duração do sinal
+input ENUM_TIMEFRAMES         rates_period = PERIOD_CURRENT; // período Rates
+input ENUM_TIMEFRAMES         candles_period = PERIOD_CURRENT; // período Candles
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -131,6 +133,7 @@ int OnInit()
    ArraySetAsSeries(bb_upper_buffer, true);
    ArraySetAsSeries(bb_lower_buffer, true);
    ArraySetAsSeries(rates, true);
+   ArraySetAsSeries(candles, true);
 
    trade.SetExpertMagicNumber(magic_number);
    trade.SetDeviationInPoints(deviation);
@@ -180,6 +183,8 @@ void OnDeinit(const int reason)
    ArrayFree(atr_buffer);
    ArrayFree(bb_upper_buffer);
    ArrayFree(bb_lower_buffer);
+   ArrayFree(rates);
+   ArrayFree(candles);
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -208,7 +213,13 @@ void OnTick()
    if(pivot.timer > 0)
       Comment("ASK: ", tick.ask, "\nBID:", tick.bid, "\nLAST:", tick.last, "\n", date.hour, ":", date.min, "\nTempo Sinal: ", ((uint)TimeCurrent() - (uint)pivot.timer)/60, " minutos");
 
-   if(CopyRates(_Symbol, _Period, 0, 10, rates) < 0) // atualiza rates
+   if(CopyRates(_Symbol, rates_period, 0, 10, rates) < 0) // atualiza rates
+     {
+      Alert("Falha na dedução das taxas: ", GetLastError());
+      return;
+     }
+
+   if(CopyRates(_Symbol, candles_period, 0, 10, candles) < 0) // atualiza rates de candles
      {
       Alert("Falha na dedução das taxas: ", GetLastError());
       return;
@@ -250,7 +261,7 @@ void OnTick()
      {
       signal = true;
       for(int i = 0; i < filter_candles_value; i++)
-         if(rates[2+i].open < rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
+         if(candles[2+i].open < candles[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser vermelhos
            {
             signal = false;
             break;
@@ -276,7 +287,7 @@ void OnTick()
      {
       signal = true;
       for(int i = 0; i < filter_candles_value; i++)
-         if(rates[2+i].open > rates[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
+         if(candles[2+i].open > candles[2+i].close && filter_candles_mode == ENABLED) // candles anteriores devem ser verdes
            {
             signal = false;
             break;
